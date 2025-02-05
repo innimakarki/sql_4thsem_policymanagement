@@ -25,7 +25,7 @@ CREATE TABLE policies (
 -- Create student_policies table
 CREATE TABLE student_policies (
     student_id INT,
-    policy_id INT,
+    policy_id INT,Ω
     compliance_status VARCHAR(20),
     violation_report TEXT,
     FOREIGN KEY (student_id) REFERENCES students(student_id),
@@ -65,7 +65,7 @@ VALUES
 -- Insert data into policies table
 INSERT INTO policies (policy_name, policy_description, policy_type, start_date, end_date)
 VALUES
-    ('Attendance Policy', 'Students must attend at least 80% of classes.', 'Academic', '2023-08-01', '2024-08-01'),
+    ('Attendance Policy', 'Student must attend at least 80% of classes.', 'Academic', '2023-08-01', '2024-08-01'),
     ('Fee Payment Policy', 'Students must pay their fees by the 10th of each month.', 'Financial', '2023-08-01', '2024-08-01'),
     ('Disciplinary Policy', 'Students must adhere to school rules and regulations.', 'Behavioral', '2023-08-01', '2024-08-01');
 
@@ -174,6 +174,12 @@ WHERE policy_type = 'Academic';
 SELECT name, course_enrolled
 FROM students;
 
+-- cartesian
+SELECT *FROM students,policies; 
+
+
+
+-- normalization
 
 CREATE TABLE unnormalized_table (
     student_id INT PRIMARY KEY,
@@ -195,7 +201,7 @@ VALUES
 DESCRIBE unnormalized_table;
 
 -- Show the unnormalized_policy_management table
-SELECT * FROM unnormalized_policy_management;
+SELECT * FROM unnormalized_table;
 
 
 
@@ -217,7 +223,7 @@ VALUES
     (2, 'Innima Karki', 380, 'Wal', 447, 'Differential'),
     (2, 'Innima Karki', 111, 'Gis', 780, 'Computer');
 
-
+select* from students_1nf;
 
 -- 2nf
 -- Create Tables
@@ -283,7 +289,7 @@ SELECT * FROM student_course_policy__2nf;
 
 -- 3nf
 -- Create a table for policies
-CREATE TABLE policies__3nf (
+CREATE TABLE policies_3nf (
     policy_id INT PRIMARY KEY AUTO_INCREMENT,
     policy_name VARCHAR(100),
     policy_description TEXT
@@ -298,24 +304,24 @@ CREATE TABLE course_policy___3nf (
     FOREIGN KEY (policy_id) REFERENCES policies_3nf(policy_id)
 );
     
-    INSERT INTO policies__3nf (policy_name, policy_description)
+    INSERT INTO policies_3nf (policy_id,policy_name, policy_description)
 VALUES
-    ('Attendance Policy', 'Must attend 80% of classes'),
-    ('Fee Payment Policy', 'Pay by 10th of each month'),
-    ('Disciplinary Policy', 'Adhere to school rules');
+    (3,'Attendance Policy', 'Must attend 80% of classes'),
+    (4,'Fee Payment Policy', 'Pay by 10th of each month'),
+    (4,'Disciplinary Policy', 'Adhere to school rules');
 
 
     INSERT INTO course_policy___3nf (student_id, course_enrolled,policy_id)
 VALUES
-    (1, 'Mathematics', '222'),
-    (1, 'Mathematics', '444'),
-    (2, 'History', '555'),
-    (3, 'Literature', '666'),
-    (3, 'Mathematics', '777');
+    (1, 'Mathematics', '1'),
+    (1, 'Mathematics', '2'),
+    (2, 'History', '3'),
+    (3, 'Literature', '2'),
+    (3, 'Mathematics', '1');
     
 SHOW TABLES;
 SELECT * FROM course_policy___3nf;
-SELECT * FROM policies__3nf;
+SELECT * FROM policies_3nf;
 
 
 
@@ -358,27 +364,26 @@ CREATE TABLE course_policies_bcnf (
     FOREIGN KEY (policy_id) REFERENCES policies_bcnf(policy_id)
 );
 
--- Insert data into tables
 -- Insert data into students_bcnf
 INSERT INTO students_bcnf (student_id, name)
 VALUES
     (1, 'John Doe'),
     (2, 'Innima Karki');
-
--- Insert data into courses_bcnf
+    
 INSERT INTO courses_bcnf (course_id, course_name)
 VALUES
     (206, 'Mathematics'),
     (209, 'Science'),
     (380, 'History'),
     (111, 'Literature');
-
+    
 -- Insert data into policies_bcnf
 INSERT INTO policies_bcnf (policy_name, policy_description)
 VALUES
     ('Attendance Policy', 'Must attend 80% of classes'),
     ('Fee Payment Policy', 'Pay by 10th of each month'),
     ('Disciplinary Policy', 'Adhere to school rules');
+
 
 -- Insert data into student_courses_bcnf
 INSERT INTO student_courses_bcnf (student_id, course_id)
@@ -432,7 +437,7 @@ CREATE PROCEDURE AddStudentAndAssignPolicies(
 BEGIN
     DECLARE p_student_id INT;
     DECLARE policy_id VARCHAR(10);
-    DECLARE policy_pos INT DEFAULT 1;
+    DECLARE policy_pos INT DEFAULT 0;
     DECLARE error_occurred BOOLEAN DEFAULT FALSE;
 
     -- Error handler
@@ -453,17 +458,19 @@ BEGIN
     SET p_student_id = LAST_INSERT_ID();
 
     -- Assign policies to the student
-    WHILE policy_pos > 0 DO
+    WHILE LENGTH(p_policy_ids) > 0 DO
         SET policy_pos = LOCATE(',', p_policy_ids);
+        
         IF policy_pos > 0 THEN
             SET policy_id = TRIM(SUBSTRING(p_policy_ids, 1, policy_pos - 1));
             SET p_policy_ids = SUBSTRING(p_policy_ids, policy_pos + 1);
         ELSE
             SET policy_id = TRIM(p_policy_ids);
+            SET p_policy_ids = '';  -- Ensures exit from loop after last policy
         END IF;
 
         -- Insert the policy assignment
-        IF policy_id != '' THEN
+        IF policy_id REGEXP '^[0-9]+$' THEN
             INSERT INTO student_policies (student_id, policy_id, compliance_status)
             VALUES (p_student_id, CAST(policy_id AS UNSIGNED), 'Pending');
         END IF;
@@ -477,4 +484,16 @@ BEGIN
     END IF;
 END$$
 
+
+
 DELIMITER ;
+CALL AddStudentAndAssignPolicies('Alice Smith', 20, 'Female', 'Mathematics', '201,202,203');
+
+SELECT * FROM students;
+SELECT * FROM students ORDER BY student_id DESC;
+
+SELECT * FROM student_policies ORDER BY policy_id DESC;
+
+
+SHOW ERRORS;
+
